@@ -5144,6 +5144,14 @@ macro(build_azuresdk)
   # provide hint for Azure SDK to link with the already located openssl
   get_filename_component(OPENSSL_ROOT_HINT "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
 
+  set(AZURE_SDK_PATCH_COMMAND)
+    find_package(Patch)
+    if(Patch_FOUND)
+      set(AZURE_SDK_PATCH_COMMAND
+          ${Patch_EXECUTABLE} "<SOURCE_DIR>/sdk/core/azure-core/src/http/curl/curl.cpp"
+          "${CMAKE_SOURCE_DIR}/build-support/ssl.patch")
+    endif()
+
   set(AZURESDK_COMMON_CMAKE_ARGS
       ${EP_COMMON_CMAKE_ARGS}
       "-DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>"
@@ -5178,6 +5186,7 @@ macro(build_azuresdk)
                       URL ${ARROW_AZURESDK_URL}
                       URL_HASH "SHA256=${ARROW_AZURE_SDK_BUILD_SHA256_CHECKSUM}"
                       CMAKE_ARGS ${AZURESDK_COMMON_CMAKE_ARGS}
+                      PATCH_COMMAND ${AZURE_SDK_PATCH_COMMAND}
                       BUILD_BYPRODUCTS ${AZURE_CORE_STATIC_LIBRARY}
                                        ${AZURE_IDENTITY_STATIC_LIBRARY}
                                        ${AZURE_STORAGE_BLOBS_STATIC_LIBRARY}
