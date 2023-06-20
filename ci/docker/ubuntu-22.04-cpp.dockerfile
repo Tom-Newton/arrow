@@ -98,10 +98,12 @@ RUN apt-get update -y -q && \
         libssl-dev \
         libthrift-dev \
         libutf8proc-dev \
+        libxml2-dev \
         libzstd-dev \
         make \
         ninja-build \
         nlohmann-json3-dev \
+        npm \
         pkg-config \
         protobuf-compiler \
         protobuf-compiler-grpc \
@@ -155,6 +157,9 @@ RUN /arrow/ci/scripts/install_gcs_testbench.sh default
 
 COPY ci/scripts/install_sccache.sh /arrow/ci/scripts/
 RUN /arrow/ci/scripts/install_sccache.sh unknown-linux-musl /usr/local/bin
+
+COPY ci/scripts/install_azurite.sh /arrow/ci/scripts/
+RUN /arrow/ci/scripts/install_azurite.sh
 
 # Prioritize system packages and local installation
 # The following dependencies will be downloaded due to missing/invalid packages
