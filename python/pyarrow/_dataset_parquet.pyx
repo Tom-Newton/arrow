@@ -630,6 +630,10 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         If enabled, pre-buffer the raw Parquet data instead of issuing one
         read per column chunk. This can improve performance on high-latency
         filesystems.
+    cache_options : pyarrow.dataset.CacheOptions, default None
+        Cache options used when pre_buffer is enabled. The default values should
+        be good for most usecases. You may want to adject these for example if
+        you have exceptionally high latency to the file system. 
     thrift_string_size_limit : int, default None
         If not None, override the maximum total string size allocated
         when decoding Thrift structures. The default limit should be
