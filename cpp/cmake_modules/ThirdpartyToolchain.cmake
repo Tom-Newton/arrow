@@ -5064,7 +5064,9 @@ function(build_azure_sdk)
   message(STATUS "Building Azure SDK for C++ from source")
   fetchcontent_declare(azure_sdk
                        URL ${ARROW_AZURE_SDK_URL}
-                       URL_HASH "SHA256=${ARROW_AZURE_SDK_BUILD_SHA256_CHECKSUM}")
+                       URL_HASH "SHA256=${ARROW_AZURE_SDK_BUILD_SHA256_CHECKSUM}"
+                      #  PATCH_COMMAND "/home/tomnewton/arrow/cpp/cmake_modules/log.patch"
+                       )
   fetchcontent_getproperties(azure_sdk)
   if(NOT azure_sdk_POPULATED)
     message(STATUS "Populating Azure SDK for C++")
@@ -5072,10 +5074,19 @@ function(build_azure_sdk)
     set(BUILD_PERFORMANCE_TESTS FALSE)
     set(BUILD_SAMPLES FALSE)
     set(BUILD_TESTING FALSE)
+    set(BUILD_TRANSPORT_CURL OFF)
     set(BUILD_WINDOWS_UWP TRUE)
     set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
     set(DISABLE_AZURE_CORE_OPENTELEMETRY TRUE)
-    add_subdirectory(${azure_sdk_SOURCE_DIR} ${azure_sdk_BINARY_DIR} EXCLUDE_FROM_ALL)
+    message(STATUS "SDK source dir ${azure_sdk_SOURCE_DIR}")
+    # add_subdirectory(${azure_sdk_SOURCE_DIR} ${azure_sdk_BINARY_DIR} EXCLUDE_FROM_ALL)
+    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/core/azure-core ${azure_sdk_BINARY_DIR}/sdk/core/azure-core EXCLUDE_FROM_ALL)
+    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/identity/azure-identity ${azure_sdk_BINARY_DIR}/sdk/identity/azure-identity EXCLUDE_FROM_ALL)
+    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-blobs ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-blobs EXCLUDE_FROM_ALL)
+    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-common ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-common EXCLUDE_FROM_ALL)
+    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-files-datalake ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-files-datalake EXCLUDE_FROM_ALL)
+    
+
   endif()
   set(AZURE_SDK_VENDORED
       TRUE
@@ -5086,7 +5097,8 @@ function(build_azure_sdk)
        Azure::azure-identity
        Azure::azure-storage-blobs
        Azure::azure-storage-common
-       Azure::azure-storage-files-datalake)
+       Azure::azure-storage-files-datalake
+       )
 set(ARROW_BUNDLED_STATIC_LIBS
    ${ARROW_BUNDLED_STATIC_LIBS}
    PARENT_SCOPE)
@@ -5099,7 +5111,8 @@ if(ARROW_WITH_AZURE_SDK)
       Azure::azure-storage-common
       Azure::azure-storage-blobs
       Azure::azure-identity
-      Azure::azure-core)
+      Azure::azure-core
+      )
 endif()
 # ----------------------------------------------------------------------
 # ucx - communication framework for modern, high-bandwidth and low-latency networks
