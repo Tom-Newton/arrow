@@ -5062,10 +5062,19 @@ endif()
 
 function(build_azure_sdk)
   message(STATUS "Building Azure SDK for C++ from source")
+  find_package(Patch)
+  if(Patch_FOUND)
+    set(AZURE_SDK_PATCH_COMMAND
+        ${Patch_EXECUTABLE} "${CMAKE_SOURCE_DIR}/build/_deps/azure_sdk-src/cmake-modules/AzureTransportAdapters.cmake"
+        "${CMAKE_SOURCE_DIR}/build-support/azure_sdk_build_transport_curl.patch")
+  else()
+    message(FATAL_ERROR "coudn't find patch executable")
+  endif()
+
   fetchcontent_declare(azure_sdk
                        URL ${ARROW_AZURE_SDK_URL}
                        URL_HASH "SHA256=${ARROW_AZURE_SDK_BUILD_SHA256_CHECKSUM}"
-                      #  PATCH_COMMAND "/home/tomnewton/arrow/cpp/cmake_modules/log.patch"
+                       PATCH_COMMAND ${AZURE_SDK_PATCH_COMMAND}
                        )
   fetchcontent_getproperties(azure_sdk)
   if(NOT azure_sdk_POPULATED)
@@ -5079,17 +5088,13 @@ function(build_azure_sdk)
     set(WARNINGS_AS_ERRORS OFF)
     set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
     set(DISABLE_AZURE_CORE_OPENTELEMETRY TRUE)
-    # set(FETCH_SOURCE_DEPS ON)
-    set(AZ_ALL_LIBRARIES ON)
-    message(STATUS "SDK source dir ${azure_sdk_SOURCE_DIR} ${azure_sdk_BINARY_DIR}")
-    # add_subdirectory(${azure_sdk_SOURCE_DIR} ${azure_sdk_BINARY_DIR} EXCLUDE_FROM_ALL)
-    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/core/azure-core ${azure_sdk_BINARY_DIR} EXCLUDE_FROM_ALL)
-
-    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/core/azure-core ${azure_sdk_BINARY_DIR}/sdk/core/azure-core)
-    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/identity/azure-identity ${azure_sdk_BINARY_DIR}/sdk/identity/azure-identity)
-    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-blobs ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-blobs)
-    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-common ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-common)
-    add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-files-datalake ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-files-datalake)
+    # set(AZ_ALL_LIBRARIES ON)
+    add_subdirectory(${azure_sdk_SOURCE_DIR} ${azure_sdk_BINARY_DIR} EXCLUDE_FROM_ALL)
+    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/core/azure-core ${azure_sdk_BINARY_DIR}/sdk/core/azure-core)
+    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/identity/azure-identity ${azure_sdk_BINARY_DIR}/sdk/identity/azure-identity)
+    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-blobs ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-blobs)
+    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-common ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-common)
+    # add_subdirectory(${azure_sdk_SOURCE_DIR}/sdk/storage/azure-storage-files-datalake ${azure_sdk_BINARY_DIR}/sdk/storage/azure-storage-files-datalake)
     
 
   endif()

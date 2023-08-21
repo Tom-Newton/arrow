@@ -1,0 +1,21 @@
+diff --git a/cmake-modules/AzureTransportAdapters.cmake b/cmake-modules/AzureTransportAdapters.cmake
+index 58b3c8b6..8929f7f3 100644
+--- a/cmake-modules/AzureTransportAdapters.cmake
++++ b/cmake-modules/AzureTransportAdapters.cmake
+@@ -46,12 +46,12 @@ elseif (UNIX)
+ 
+     if(NOT BUILD_TRANSPORT_CURL)
+       message("No transport adapter was selected, using libcurl as the default option for POSIX.")
++    else()
++      add_compile_definitions(BUILD_CURL_HTTP_TRANSPORT_ADAPTER)
++      
++      SET(BUILD_TRANSPORT_CURL ON)
+     endif()
+ 
+-    add_compile_definitions(BUILD_CURL_HTTP_TRANSPORT_ADAPTER)
+-
+-    
+-    SET(BUILD_TRANSPORT_CURL ON)
+   endif()
+ 
+ else()
