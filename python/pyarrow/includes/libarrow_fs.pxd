@@ -248,6 +248,9 @@ cdef extern from "arrow/filesystem/api.h" namespace "arrow::fs" nogil:
         c_string dfs_storage_authority
         c_string blob_storage_scheme
         c_string dfs_storage_scheme
+        int64_t initial_chunk_size
+        int64_t chunk_size
+        int32_t concurrency
 
         c_bool Equals(const CAzureOptions& other)
         CStatus ConfigureDefaultCredential()

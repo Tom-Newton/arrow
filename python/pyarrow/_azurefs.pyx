@@ -84,7 +84,8 @@ cdef class AzureFileSystem(FileSystem):
 
     def __init__(self, account_name, *, account_key=None, blob_storage_authority=None,
                  dfs_storage_authority=None, blob_storage_scheme=None,
-                 dfs_storage_scheme=None):
+                 dfs_storage_scheme=None, initial_chunk_size=None, chunk_size=None, 
+                 concurrency=None):
         cdef:
             CAzureOptions options
             shared_ptr[CAzureFileSystem] wrapped
@@ -98,6 +99,13 @@ cdef class AzureFileSystem(FileSystem):
             options.blob_storage_scheme = tobytes(blob_storage_scheme)
         if dfs_storage_scheme:
             options.dfs_storage_scheme = tobytes(dfs_storage_scheme)
+
+        if initial_chunk_size:
+            options.initial_chunk_size = initial_chunk_size
+        if chunk_size:
+            options.chunk_size = chunk_size
+        if concurrency:
+            options.concurrency = concurrency
 
         if account_key:
             options.ConfigureAccountKeyCredential(tobytes(account_key))
@@ -130,5 +138,8 @@ cdef class AzureFileSystem(FileSystem):
                 blob_storage_authority=frombytes(opts.blob_storage_authority),
                 dfs_storage_authority=frombytes(opts.dfs_storage_authority),
                 blob_storage_scheme=frombytes(opts.blob_storage_scheme),
-                dfs_storage_scheme=frombytes(opts.dfs_storage_scheme)
+                dfs_storage_scheme=frombytes(opts.dfs_storage_scheme),
+                chunk_size=opts.chunk_size,
+                initial_chunk_size=opts.initial_chunk_size,
+                concurrency=opts.concurrency,
             ),))
