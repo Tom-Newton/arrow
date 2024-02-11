@@ -112,6 +112,14 @@ struct ARROW_EXPORT AzureOptions {
   /// This will be ignored if non-empty metadata is passed to OpenOutputStream.
   std::shared_ptr<const KeyValueMetadata> default_metadata;
 
+  /// \brief Options for parallel transfer of each read call on ObjectInputFile.
+  ///
+  /// Defaults are taken from the Azure SDK. See
+  /// Azure::Storage::Blobs::DownloadBlobToOptions::TransferOptions
+  int64_t initial_chunk_size = 256 * 1024 * 1024;
+  int64_t chunk_size = 4 * 1024 * 1024;
+  int32_t concurrency = 5;
+
  private:
   enum class CredentialKind {
     kDefault,

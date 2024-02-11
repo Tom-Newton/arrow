@@ -756,11 +756,14 @@ class ObjectInputFile final : public io::RandomAccessFile {
  public:
   ObjectInputFile(std::shared_ptr<Blobs::BlobClient> blob_client,
                   const io::IOContext& io_context, AzureLocation location,
-                  int64_t size = kNoSize)
+                  const AzureOptions& options, int64_t size = kNoSize)
       : blob_client_(std::move(blob_client)),
         io_context_(io_context),
         location_(std::move(location)),
-        content_length_(size) {}
+        content_length_(size),
+        initial_chunk_size_(options.initial_chunk_size),
+        chunk_size_(options.chunk_size),
+        concurrency_(options.concurrency) {}
 
   Status Init() {
     if (content_length_ != kNoSize) {
@@ -855,8 +858,8 @@ class ObjectInputFile final : public io::RandomAccessFile {
 
     // Read the desired range of bytes
     Http::HttpRange range{position, nbytes};
-    Storage::Blobs::DownloadBlobToOptions download_options;
-    download_options.Range = range;
+    Storage::Blobs::DownloadBlobToOptions download_options{
+        range, {initial_chunk_size_, chunk_size_, concurrency_}};
     try {
       return blob_client_
           ->DownloadTo(reinterpret_cast<uint8_t*>(out), nbytes, download_options)
@@ -908,6 +911,9 @@ class ObjectInputFile final : public io::RandomAccessFile {
   int64_t pos_ = 0;
   int64_t content_length_ = kNoSize;
   std::shared_ptr<const KeyValueMetadata> metadata_;
+  int64_t initial_chunk_size_;
+  int64_t chunk_size_;
+  int32_t concurrency_;
 };
 
 Status CreateEmptyBlockBlob(const Blobs::BlockBlobClient& block_blob_client) {
@@ -1907,7 +1913,7 @@ class AzureFileSystem::Impl {
         GetBlobClient(location.container, location.path));
 
     auto ptr = std::make_shared<ObjectInputFile>(blob_client, fs->io_context(),
-                                                 std::move(location));
+                                                 std::move(location), options_);
     RETURN_NOT_OK(ptr->Init());
     return ptr;
   }
@@ -1926,7 +1932,7 @@ class AzureFileSystem::Impl {
         GetBlobClient(location.container, location.path));
 
     auto ptr = std::make_shared<ObjectInputFile>(blob_client, fs->io_context(),
-                                                 std::move(location), info.size());
+                                                 std::move(location), options_, info.size());
     RETURN_NOT_OK(ptr->Init());
     return ptr;
   }
