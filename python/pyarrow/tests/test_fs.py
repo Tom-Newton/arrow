@@ -292,23 +292,24 @@ _minio_limited_policy = """{
 
 
 @pytest.fixture
-def azurefs(request, azure_server):
+def azurefs(request):
     request.config.pyarrow.requires('azure')
     from pyarrow.fs import AzureFileSystem
 
-    host, port = azure_server['connection']
-    azureite_authority = f"{host}:{port}"
-    azureite_scheme = "http"
+    # host, port = azure_server['connection']
+    # azureite_authority = f"{host}:{port}"
+    # azureite_scheme = "http"
 
-    container = 'pyarrow-filesystem/'
+    from uuid import uuid1
+    container = f'{uuid1()}/'
 
-    fs = AzureFileSystem(account_name='devstoreaccount1',
-                         account_key='Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuF'
-                         'q2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
-                         blob_storage_authority=azureite_authority,
-                         dfs_storage_authority=azureite_authority,
-                         blob_storage_scheme=azureite_scheme,
-                         dfs_storage_scheme=azureite_scheme)
+    fs = AzureFileSystem(account_name='tomtesthns',
+                         account_key=os.getenv("ACCOUNT_KEY"),
+                        #  blob_storage_authority=azureite_authority,
+                        #  dfs_storage_authority=azureite_authority,
+                        #  blob_storage_scheme=azureite_scheme,
+                        #  dfs_storage_scheme=azureite_scheme
+                         )
 
     fs.create_dir(container)
 
@@ -899,7 +900,7 @@ def test_copy_file(fs, pathfn):
 
 def test_move_directory(fs, pathfn, allow_move_dir):
     # TODO(GH-40025): Stop skipping this test
-    skip_azure(fs, "Not implemented yet in for Azure. See GH-40025")
+    # skip_azure(fs, "Not implemented yet in for Azure. See GH-40025")
 
     # move directory (doesn't work with S3)
     s = pathfn('source-dir/')
@@ -923,7 +924,7 @@ def test_move_file(fs, pathfn):
     skip_fsspec_s3fs(fs)
 
     # TODO(GH-40025): Stop skipping this test
-    skip_azure(fs, "Not implemented yet in for Azure. See GH-40025")
+    # skip_azure(fs, "Not implemented yet in for Azure. See GH-40025")
 
     s = pathfn('test-move-source-file')
     t = pathfn('test-move-target-file')
