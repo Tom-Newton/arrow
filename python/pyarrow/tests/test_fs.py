@@ -1067,7 +1067,7 @@ def test_open_append_stream(fs, pathfn, compression, buffer_size, compressor,
 
 def test_open_output_stream_metadata(fs, pathfn):
     p = pathfn('open-output-stream-metadata')
-    metadata = {'Content-Type': 'x-pyarrow/test'}
+    metadata = {'Type-Name': 'pyarrow'}
 
     data = b'some data'
     with fs.open_output_stream(p, metadata=metadata) as f:
@@ -1079,9 +1079,9 @@ def test_open_output_stream_metadata(fs, pathfn):
 
     if fs.type_name in ['s3', 'gcs', 'abfs'] or 'mock' in fs.type_name:
         # TODO(GH-40026): Stop skipping this test
-        skip_azure(
-            fs, "Azure filesystem currently only returns system metadata not user "
-            "metadata. See GH-40026")
+        # skip_azure(
+        #     fs, "Azure filesystem currently only returns system metadata not user "
+        #     "metadata. See GH-40026")
         for k, v in metadata.items():
             assert got_metadata[k] == v.encode()
     else:
