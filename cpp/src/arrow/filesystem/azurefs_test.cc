@@ -188,7 +188,7 @@ class AzuriteEnv : public AzureEnvImpl<AzuriteEnv> {
         new AzuriteEnv("devstoreaccount1",
                        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
                        "K1SZFPTOtr/KBHBeksoGMGw=="));
-    auto exe_path = bp::search_path("azurite");
+    auto exe_path = bp::search_path("azurite-blob");
     if (exe_path.empty()) {
       return Status::Invalid("Could not find Azurite emulator.");
     }
