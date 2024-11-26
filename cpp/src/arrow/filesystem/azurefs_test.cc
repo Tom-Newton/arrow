@@ -46,6 +46,8 @@
 #include "arrow/util/unreachable.h"
 #include "arrow/util/value_parsing.h"
 
+#include "arrow/filesystem/localfs.h"
+
 namespace arrow {
 using internal::TemporaryDir;
 namespace fs {
@@ -2347,6 +2349,23 @@ TEST_F(TestAzuriteFileSystem, CheckIfHierarchicalNamespaceIsEnabledTransportErro
   ASSERT_RAISES(IOError,
                 internal::CheckIfHierarchicalNamespaceIsEnabled(adlfs_client, options_));
 }
+
+TEST_F(TestAzuriteFileSystem, ReproduceIssue) {
+  std::string relative_path;
+  auto azure_options = AzureOptions::FromUri("abfss://databricks-users@wayvedevdataset.dfs.core.windows.net/", &relative_path);
+
+  ASSERT_OK_AND_ASSIGN(auto azure_fs, AzureFileSystem::Make(options_));
+
+  auto local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
+
+  auto selector = arrow::fs::FileSelector{};
+  selector.base_dir = "/home/tomnewton/Downloads/charts";
+  selector.recursive = true;
+
+  ASSERT_OK(arrow::fs::CopyFiles(local_fs, selector,
+                       azure_fs, "databricks-users/tomnewton/test_fs0/"));
+}
+
 
 TEST_F(TestAzuriteFileSystem, GetFileInfoSelector) {
   SetUpSmallFileSystemTree();
