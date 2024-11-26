@@ -630,8 +630,9 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
                            destinations.size(), " paths.");
   }
 
-  auto copy_one_file = [&](int i) {
-    if (sources[i].filesystem->Equals(destinations[i].filesystem)) {
+  std::function<Result<bool>(int, const FileLocator&)> copy_one_file;
+  copy_one_file = [&](int i, const FileLocator& source_file_locator) -> Result<bool> {
+    if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
       return sources[i].filesystem->CopyFile(sources[i].path, destinations[i].path);
     }
 
@@ -642,12 +643,13 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
     ARROW_ASSIGN_OR_RAISE(auto destination, destinations[i].filesystem->OpenOutputStream(
                                                 destinations[i].path, metadata));
     RETURN_NOT_OK(internal::CopyStream(source, destination, chunk_size, io_context));
-    return destination->Close();
+    RETURN_NOT_OK(destination->Close());
+    return true;
   };
 
-  return ::arrow::internal::OptionalParallelFor(
-      use_threads, static_cast<int>(sources.size()), std::move(copy_one_file),
-      io_context.executor());
+  auto future = ::arrow::internal::OptionalParallelForAsync(
+      use_threads, sources, std::move(copy_one_file), io_context.executor());
+  return future.status();
 }
 
 Status CopyFiles(const std::shared_ptr<FileSystem>& source_fs,
