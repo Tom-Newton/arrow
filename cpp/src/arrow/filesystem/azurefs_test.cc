@@ -2384,15 +2384,9 @@ TEST_F(TestAzuriteFileSystem, OppositeDirection) {
   auto azure_options = AzureOptions::FromUri(
       "abfss://databricks-users@wayvedevdataset.dfs.core.windows.net/", &relative_path).ValueOrDie();
 
-  // ASSERT_OK_AND_ASSIGN(auto azure_fs, AzureFileSystem::Make(azure_options));
-
-  // auto local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
-
   auto selector = arrow::fs::FileSelector{};
   selector.base_dir = "databricks-users/tomnewton/test_fs0/";
   selector.recursive = true;
-
-  // auto info = azure_fs->GetFileInfo(selector).ValueOrDie();
 
   ASSERT_OK(arrow::fs::CopyFiles(azure_fs1, selector, local_fs1,
                                  "/home/tomnewton/Downloads/test_download0"));

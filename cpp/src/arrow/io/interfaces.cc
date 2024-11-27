@@ -68,11 +68,8 @@ Status SetIOThreadPoolCapacity(int threads) {
 FileInterface::~FileInterface() = default;
 
 Future<> FileInterface::CloseAsync() {
-  auto context = default_io_context();
-  auto self = shared_from_this();
-  auto lambda = [self]() { return self->Close(); };
-  auto future = DeferNotOk(context.executor()->Submit(lambda));
-  return future;
+  return DeferNotOk(
+      default_io_context().executor()->Submit([self = shared_from_this()]() { return self->Close(); }));
 }
 
 Status FileInterface::Abort() { return Close(); }
