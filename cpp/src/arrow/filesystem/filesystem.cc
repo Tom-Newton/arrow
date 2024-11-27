@@ -643,9 +643,11 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
     ARROW_ASSIGN_OR_RAISE(auto destination, destinations[i].filesystem->OpenOutputStream(
                                                 destinations[i].path, metadata));
     RETURN_NOT_OK(internal::CopyStream(source, destination, chunk_size, io_context));
-    // Using the blocking Close() here can cause deadlocks because FileSystem implementations that implement 
-    // background_writes need to wait for another IO thread. There is a risk that the whole IO thread pool is full of 
-    // "wasted" threads trying to call Close(), leaving no IO threads left to actually fulfill the background writes. 
+    // Using the blocking Close() here can cause deadlocks because FileSystem
+    // implementations that implement background_writes need to wait for another IO
+    // thread. There is a risk that the whole IO thread pool is full of "wasted" threads
+    // trying to call Close(), leaving no IO threads left to actually fulfill the
+    // background writes.
     return destination->CloseAsync();
   };
 
