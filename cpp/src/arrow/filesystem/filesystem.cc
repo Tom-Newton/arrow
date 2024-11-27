@@ -632,9 +632,9 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
 
   auto copy_one_file = [&](int i,
                            const FileLocator& source_file_locator) -> Result<Future<>> {
-    if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
-      return sources[i].filesystem->CopyFile(sources[i].path, destinations[i].path);
-    }
+    // if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
+    //   return sources[i].filesystem->CopyFile(sources[i].path, destinations[i].path);
+    // }
 
     ARROW_ASSIGN_OR_RAISE(auto source,
                           sources[i].filesystem->OpenInputStream(sources[i].path));

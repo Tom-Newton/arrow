@@ -2394,8 +2394,8 @@ TEST_F(TestAzuriteFileSystem, OppositeDirection) {
 
   // auto info = azure_fs->GetFileInfo(selector).ValueOrDie();
 
-  ASSERT_OK(arrow::fs::CopyFiles(azure_fs1, selector, local_fs1,
-                                 "/home/tomnewton/Downloads/test_download0"));
+  ASSERT_OK(arrow::fs::CopyFiles(azure_fs1, selector, azure_fs1,
+                                 "databricks-users/tomnewton/test_fs0/"));
 }
 
 TEST_F(TestAzuriteFileSystem, GetFileInfoSelector) {
