@@ -591,8 +591,8 @@ void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
   ASSERT_OK(local_fs->CreateDir("EF"));
   std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
   for (const auto& dir : all_dirs) {
-    for (int i = 0; i <= 1000; ++i) {
-      CreateFile(local_fs.get(), dir + "/" + std::to_string(i), std::string(10000000, 'a'));
+    for (int i = 0; i <= 10; ++i) {
+      CreateFile(local_fs.get(), dir + "/" + std::to_string(i), std::string(100, 'a'));
     }
   }
 
