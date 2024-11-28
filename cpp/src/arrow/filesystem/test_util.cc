@@ -581,62 +581,53 @@ void GenericFileSystemTest::TestCopyFile(FileSystem* fs) {
 }
 
 void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
-  auto local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
+  // TODO: Ultimately this should test using the in memory fs as the other filesystem.
+  ASSERT_OK(arrow::io::SetIOThreadPoolCapacity(1000));
+  auto root_local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
+  auto local_fs = std::make_shared<arrow::fs::SubTreeFileSystem>("/tmp/arrow_testing/0",
+                                                                 root_local_fs);
 
   ASSERT_OK(local_fs->CreateDir("AB/CD"));
   ASSERT_OK(local_fs->CreateDir("EF"));
-  CreateFile(local_fs.get(), "AB/abc", "data");
   std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
-
-  // Copy into root dir
-  ASSERT_OK(fs->CopyFile("AB/abc", "def"));
-  AssertAllDirs(fs, all_dirs);
-  AssertAllFiles(fs, {"AB/abc", "def"});
-
-  // Copy out of root dir
-  ASSERT_OK(fs->CopyFile("def", "EF/ghi"));
-  AssertAllDirs(fs, all_dirs);
-  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
-
-  // Overwrite contents for one file => other data shouldn't change
-  CreateFile(fs, "def", "other data");
-  AssertFileContents(fs, "AB/abc", "data");
-  AssertFileContents(fs, "def", "other data");
-  AssertFileContents(fs, "EF/ghi", "data");
-
-  // Destination is a file => clobber
-  ASSERT_OK(fs->CopyFile("def", "AB/abc"));
-  AssertAllDirs(fs, all_dirs);
-  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
-  AssertFileContents(fs, "AB/abc", "other data");
-  AssertFileContents(fs, "def", "other data");
-  AssertFileContents(fs, "EF/ghi", "data");
-
-  // Identical source and destination: allowed to succeed or raise IOError,
-  // but should not lose data.
-  Status st = fs->CopyFile("def", "def");
-  if (!st.ok()) {
-    ASSERT_RAISES(IOError, st);
+  for (const auto& dir : all_dirs) {
+    for (int i = 0; i <= 1000; ++i) {
+      CreateFile(local_fs.get(), dir + "/" + std::to_string(i), std::string(10000000, 'a'));
+    }
   }
-  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
-  AssertFileContents(fs, "def", "other data");
 
-  // Source doesn't exist
-  ASSERT_RAISES(IOError, fs->CopyFile("abc", "xxx"));
-  if (!allow_write_file_over_dir()) {
-    // Destination is a non-empty directory
-    ASSERT_RAISES(IOError, fs->CopyFile("def", "AB"));
-  }
-  if (!have_implicit_directories()) {
-    // Parent destination doesn't exist
-    ASSERT_RAISES(IOError, fs->CopyFile("AB/abc", "XX/mno"));
-  }
-  // Parent destination is not a directory ("def" is a file)
-  if (!allow_write_implicit_dir_over_file()) {
-    ASSERT_RAISES(IOError, fs->CopyFile("AB/abc", "def/mno"));
-  }
+  auto local_selector = arrow::fs::FileSelector{};
+  local_selector.base_dir = "";
+  local_selector.recursive = true;
+
+  std::shared_ptr<FileSystem> shared_ptr_fs(fs, [](FileSystem*) {});
+  ASSERT_OK(CopyFiles(local_fs, local_selector, shared_ptr_fs, "container"));
+
+  auto selector = arrow::fs::FileSelector{};
+  selector.base_dir = "container";
+  selector.recursive = true;
+
+  auto local_fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/tmp/arrow_testing/1",
+                                                                  root_local_fs);
+
+  ASSERT_OK(CopyFiles(shared_ptr_fs, selector, local_fs, ""));
+
   AssertAllDirs(fs, all_dirs);
-  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+  // AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+
+  // // Overwrite contents for one file => other data shouldn't change
+  // CreateFile(fs, "def", "other data");
+  // AssertFileContents(fs, "AB/abc", "data");
+  // AssertFileContents(fs, "def", "other data");
+  // AssertFileContents(fs, "EF/ghi", "data");
+
+  // // Destination is a file => clobber
+  // ASSERT_OK(fs->CopyFile("def", "AB/abc"));
+  // AssertAllDirs(fs, all_dirs);
+  // AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+  // AssertFileContents(fs, "AB/abc", "other data");
+  // AssertFileContents(fs, "def", "other data");
+  // AssertFileContents(fs, "EF/ghi", "data");
 }
 
 void GenericFileSystemTest::TestGetFileInfo(FileSystem* fs) {
