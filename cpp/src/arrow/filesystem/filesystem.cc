@@ -55,6 +55,7 @@
 #include "arrow/util/vector.h"
 #include "arrow/util/visibility.h"
 #include "arrow/util/windows_fixup.h"
+#include <iostream>
 
 namespace arrow::fs {
 
@@ -632,6 +633,7 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
 
   auto copy_one_file = [&](int i,
                            const FileLocator& source_file_locator) -> Result<Future<>> {
+    std::cout << "COPYING file " << i << std::endl;
     if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
       return sources[i].filesystem->CopyFile(sources[i].path, destinations[i].path);
     }

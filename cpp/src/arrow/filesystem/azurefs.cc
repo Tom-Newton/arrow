@@ -19,6 +19,7 @@
 #include <chrono>
 #include <memory>
 #include <optional>
+#include <iostream>
 
 #include "arrow/filesystem/azurefs.h"
 #include "arrow/filesystem/azurefs_internal.h"
@@ -1261,6 +1262,7 @@ class ObjectAppendStream final : public io::OutputStream {
       // The closure keeps the buffer and the upload state alive
       auto deferred = [owned_buffer, block_id, block_blob_client = block_blob_client_,
                        state = upload_state_]() mutable -> Status {
+        std::cout << "Background stage block" << std::endl;
         Core::IO::MemoryBodyStream block_content(owned_buffer->data(),
                                                  owned_buffer->size());
 
