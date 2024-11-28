@@ -56,7 +56,7 @@ struct QueuedTask {
   Task task;
   TaskHints hints;
   bool operator<(const QueuedTask& other) const {
-    return hints.priority < other.hints.priority;
+    return hints.priority > other.hints.priority;
   }
 };
 

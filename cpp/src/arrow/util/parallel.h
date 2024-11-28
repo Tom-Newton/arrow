@@ -52,8 +52,10 @@ Future<std::vector<R>> ParallelForAsync(
     std::vector<T> inputs, FUNCTION&& func,
     Executor* executor = internal::GetCpuThreadPool()) {
   std::vector<Future<R>> futures(inputs.size());
+  TaskHints hints;
+  hints.priority = 10;
   for (size_t i = 0; i < inputs.size(); ++i) {
-    ARROW_ASSIGN_OR_RAISE(futures[i], executor->Submit(func, i, std::move(inputs[i])));
+    ARROW_ASSIGN_OR_RAISE(futures[i], executor->Submit(hints, func, i, std::move(inputs[i])));
   }
   return All(std::move(futures))
       .Then([](const std::vector<Result<R>>& results) -> Result<std::vector<R>> {
