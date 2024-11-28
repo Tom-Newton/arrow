@@ -37,6 +37,8 @@
 #include "arrow/util/key_value_metadata.h"
 #include "arrow/util/vector.h"
 
+#include "arrow/filesystem/localfs.h"
+
 using ::testing::ElementsAre;
 
 namespace arrow {
@@ -525,6 +527,65 @@ void GenericFileSystemTest::TestCopyFile(FileSystem* fs) {
   ASSERT_OK(fs->CreateDir("AB/CD"));
   ASSERT_OK(fs->CreateDir("EF"));
   CreateFile(fs, "AB/abc", "data");
+  std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
+
+  // Copy into root dir
+  ASSERT_OK(fs->CopyFile("AB/abc", "def"));
+  AssertAllDirs(fs, all_dirs);
+  AssertAllFiles(fs, {"AB/abc", "def"});
+
+  // Copy out of root dir
+  ASSERT_OK(fs->CopyFile("def", "EF/ghi"));
+  AssertAllDirs(fs, all_dirs);
+  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+
+  // Overwrite contents for one file => other data shouldn't change
+  CreateFile(fs, "def", "other data");
+  AssertFileContents(fs, "AB/abc", "data");
+  AssertFileContents(fs, "def", "other data");
+  AssertFileContents(fs, "EF/ghi", "data");
+
+  // Destination is a file => clobber
+  ASSERT_OK(fs->CopyFile("def", "AB/abc"));
+  AssertAllDirs(fs, all_dirs);
+  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+  AssertFileContents(fs, "AB/abc", "other data");
+  AssertFileContents(fs, "def", "other data");
+  AssertFileContents(fs, "EF/ghi", "data");
+
+  // Identical source and destination: allowed to succeed or raise IOError,
+  // but should not lose data.
+  Status st = fs->CopyFile("def", "def");
+  if (!st.ok()) {
+    ASSERT_RAISES(IOError, st);
+  }
+  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+  AssertFileContents(fs, "def", "other data");
+
+  // Source doesn't exist
+  ASSERT_RAISES(IOError, fs->CopyFile("abc", "xxx"));
+  if (!allow_write_file_over_dir()) {
+    // Destination is a non-empty directory
+    ASSERT_RAISES(IOError, fs->CopyFile("def", "AB"));
+  }
+  if (!have_implicit_directories()) {
+    // Parent destination doesn't exist
+    ASSERT_RAISES(IOError, fs->CopyFile("AB/abc", "XX/mno"));
+  }
+  // Parent destination is not a directory ("def" is a file)
+  if (!allow_write_implicit_dir_over_file()) {
+    ASSERT_RAISES(IOError, fs->CopyFile("AB/abc", "def/mno"));
+  }
+  AssertAllDirs(fs, all_dirs);
+  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+}
+
+void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
+  auto local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
+
+  ASSERT_OK(local_fs->CreateDir("AB/CD"));
+  ASSERT_OK(local_fs->CreateDir("EF"));
+  CreateFile(local_fs.get(), "AB/abc", "data");
   std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
 
   // Copy into root dir
@@ -1212,6 +1273,7 @@ GENERIC_FS_TEST_DEFINE(TestDeleteFiles)
 GENERIC_FS_TEST_DEFINE(TestMoveFile)
 GENERIC_FS_TEST_DEFINE(TestMoveDir)
 GENERIC_FS_TEST_DEFINE(TestCopyFile)
+GENERIC_FS_TEST_DEFINE(TestCopyFilesBetweenFilesystems)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfo)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfoVector)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfoSelector)
