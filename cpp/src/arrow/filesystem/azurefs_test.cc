@@ -2350,48 +2350,6 @@ TEST_F(TestAzuriteFileSystem, CheckIfHierarchicalNamespaceIsEnabledTransportErro
                 internal::CheckIfHierarchicalNamespaceIsEnabled(adlfs_client, options_));
 }
 
-TEST_F(TestAzuriteFileSystem, ReproduceIssue) {
-  // std::string relative_path;
-  // auto azure_options = AzureOptions::FromUri(
-  //     "abfss://databricks-users@wayvedevdataset.dfs.core.windows.net/", &relative_path);
-
-  ASSERT_OK_AND_ASSIGN(auto azure_fs, AzureFileSystem::Make(options_));
-
-  auto local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
-
-  auto selector = arrow::fs::FileSelector{};
-  selector.base_dir = "/home/tomnewton/Downloads/charts";
-  selector.recursive = true;
-
-  ASSERT_OK(arrow::fs::CopyFiles(local_fs, selector, azure_fs,
-                                 "databricks-users/tomnewton/test_fs0/"));
-}
-
-TEST_F(TestAzuriteFileSystem, OppositeDirection) {
-
-  ASSERT_OK_AND_ASSIGN(auto azure_fs1, AzureFileSystem::Make(options_));
-
-  auto local_fs1 = std::make_shared<arrow::fs::LocalFileSystem>();
-
-  auto selector1 = arrow::fs::FileSelector{};
-  selector1.base_dir = "/home/tomnewton/Downloads/charts";
-  selector1.recursive = true;
-
-  ASSERT_OK(arrow::fs::CopyFiles(local_fs1, selector1, azure_fs1,
-                                 "databricks-users/tomnewton/test_fs0/"));
-
-  std::string relative_path;
-  auto azure_options = AzureOptions::FromUri(
-      "abfss://databricks-users@wayvedevdataset.dfs.core.windows.net/", &relative_path).ValueOrDie();
-
-  auto selector = arrow::fs::FileSelector{};
-  selector.base_dir = "databricks-users/tomnewton/test_fs0/";
-  selector.recursive = true;
-
-  ASSERT_OK(arrow::fs::CopyFiles(azure_fs1, selector, local_fs1,
-                                 "/home/tomnewton/Downloads/test_download0"));
-}
-
 TEST_F(TestAzuriteFileSystem, GetFileInfoSelector) {
   SetUpSmallFileSystemTree();
 
