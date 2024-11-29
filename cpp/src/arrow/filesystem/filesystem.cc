@@ -657,7 +657,7 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
   // memory. Therefore, without this large copies would cause OOMs.
   TaskHints hints{10};
   auto future = ::arrow::internal::OptionalParallelForAsync(
-      use_threads, sources, std::move(copy_one_file), hints, io_context.executor());
+      use_threads, sources, std::move(copy_one_file), io_context.executor(), hints);
 
   // Wait for all the copy_one_file instances to complete.
   ARROW_ASSIGN_OR_RAISE(auto copy_close_async_future, future.result());
