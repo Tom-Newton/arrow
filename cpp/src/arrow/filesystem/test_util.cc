@@ -585,46 +585,37 @@ void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
       std::chrono::system_clock::now());
   std::shared_ptr<FileSystem> shared_ptr_fs(fs, [](FileSystem*) {});
 
-  auto mock_fs0 = std::make_shared<arrow::fs::SubTreeFileSystem>("/0", root_mock_fs);
-  auto fs0 = std::make_shared<arrow::fs::SubTreeFileSystem>("/0", shared_ptr_fs);
-  auto mock_fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/1", root_mock_fs);
-  auto fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/1", shared_ptr_fs);
 
-  ASSERT_OK(mock_fs0->CreateDir("AB/CD"));
-  ASSERT_OK(mock_fs0->CreateDir("EF"));
-  std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
-  for (const auto& dir : all_dirs) {
-    for (int i = 0; i <= 100; ++i) {
-      CreateFile(mock_fs0.get(), dir + "/" + std::to_string(i), std::string(100, 'a'));
-    }
+  // Make sure to test with more files that IO threads to catch GH-15233
+  const int kNumberFiles = 10;
+
+  ASSERT_OK(root_mock_fs->CreateDir("0"));
+  for (int i = 0; i <= kNumberFiles; ++i) {
+    CreateFile(root_mock_fs.get(), "0/" + std::to_string(i), "data" + std::to_string(i));
   }
 
-  auto selector = arrow::fs::FileSelector{};
-  selector.recursive = true;
+  auto selector0 = arrow::fs::FileSelector{};
+  selector0.base_dir = "0";
+  selector0.recursive = true;
 
-  ASSERT_OK(CopyFiles(mock_fs0, selector, fs0, ""));
-  ASSERT_OK(CopyFiles(fs0, selector, fs1, ""));
+  ASSERT_OK(CopyFiles(root_mock_fs, selector0, shared_ptr_fs, "0"));
+  for (int i = 0; i <= kNumberFiles; ++i) {
+    AssertFileContents(fs, "0/" + std::to_string(i), "data" + std::to_string(i));
+  }
 
-  
+  ASSERT_OK(CopyFiles(shared_ptr_fs, selector0, shared_ptr_fs, "1"));
+  for (int i = 0; i <= kNumberFiles; ++i) {
+    AssertFileContents(fs, "1/" + std::to_string(i), "data" + std::to_string(i));
+  }
 
-  ASSERT_OK(CopyFiles(shared_ptr_fs, selector, mock_fs1, ""));
-
-  AssertAllDirs(fs, all_dirs);
-  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
-
-  // // Overwrite contents for one file => other data shouldn't change
-  // CreateFile(fs, "def", "other data");
-  // AssertFileContents(fs, "AB/abc", "data");
-  // AssertFileContents(fs, "def", "other data");
-  // AssertFileContents(fs, "EF/ghi", "data");
-
-  // // Destination is a file => clobber
-  // ASSERT_OK(fs->CopyFile("def", "AB/abc"));
-  // AssertAllDirs(fs, all_dirs);
-  // AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
-  // AssertFileContents(fs, "AB/abc", "other data");
-  // AssertFileContents(fs, "def", "other data");
-  // AssertFileContents(fs, "EF/ghi", "data");
+  auto selector1 = arrow::fs::FileSelector{};
+  selector1.base_dir = "1";
+  selector1.recursive = true;
+  ASSERT_OK(CopyFiles(shared_ptr_fs, selector1, root_mock_fs, "1"));
+  for (int i = 0; i <= kNumberFiles; ++i) {
+    AssertFileContents(root_mock_fs.get(), "1/" + std::to_string(i),
+                       "data" + std::to_string(i));
+  }
 }
 
 void GenericFileSystemTest::TestGetFileInfo(FileSystem* fs) {
