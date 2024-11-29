@@ -653,8 +653,8 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
 
   // Spawn copy_one_file less urgently than default, so that background_writes are done
   // with higher priority. Otherwise copy_one_file will keep buffering more data in memory
-  // and there will be no IO threads left to do the background_writes. Large copies
-  // where the background_writes are delayed too much, will cause OOMs.
+  // without giving the background_writes any chance to upload the data and drop it from 
+  // memory. Therefore, without this large copies would cause OOMs.
   TaskHints hints{10};
   auto future = ::arrow::internal::OptionalParallelForAsync(
       use_threads, sources, std::move(copy_one_file), hints, io_context.executor());
