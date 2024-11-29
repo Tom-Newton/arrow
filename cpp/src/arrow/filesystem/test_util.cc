@@ -580,41 +580,59 @@ void GenericFileSystemTest::TestCopyFile(FileSystem* fs) {
   AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
 }
 
-void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
-  auto root_mock_fs = std::make_shared<arrow::fs::internal::MockFileSystem>(
+void GenericFileSystemTest::TestCopyFiles(FileSystem* fs) {
+  auto originalThreads = io::GetIOThreadPoolCapacity();
+  // Needs to be smaller than the number of files we test with to catch GH-15233
+  ASSERT_OK(io::SetIOThreadPoolCapacity(2));
+  // Ensure the thread pool capacity is set back to the original value after the test
+  auto resetThreadPool = [originalThreads](void*) {
+    ASSERT_OK(io::SetIOThreadPoolCapacity(originalThreads));
+  };
+  std::unique_ptr<void, decltype(resetThreadPool)> resetThreadPoolGuard(nullptr,
+                                                                        resetThreadPool);
+
+  auto mock_fs = std::make_shared<arrow::fs::internal::MockFileSystem>(
       std::chrono::system_clock::now());
   std::shared_ptr<FileSystem> shared_ptr_fs(fs, [](FileSystem*) {});
 
+  std::vector<std::string> dirs0{"0", "0/AB", "0/AB/CD"};
+  std::map<std::string, std::string> files0{
+      {"0/123", "123 data"}, {"0/AB/abc", "abc data"}, {"0/AB/CD/def", "def data"}};
 
-  // Make sure to test with more files that IO threads to catch GH-15233
-  const int kNumberFiles = 10;
+  std::vector<std::string> dirs0and1{"0", "0/AB", "0/AB/CD", "1", "1/AB", "1/AB/CD"};
+  std::map<std::string, std::string> files0and1{
+      {"0/123", "123 data"}, {"0/AB/abc", "abc data"}, {"0/AB/CD/def", "def data"},
+      {"1/123", "123 data"}, {"1/AB/abc", "abc data"}, {"1/AB/CD/def", "def data"}};
 
-  ASSERT_OK(root_mock_fs->CreateDir("0"));
-  for (int i = 0; i <= kNumberFiles; ++i) {
-    CreateFile(root_mock_fs.get(), "0/" + std::to_string(i), "data" + std::to_string(i));
+  ASSERT_OK(mock_fs->CreateDir("0/AB/CD"));
+  for (const auto& kv : files0) {
+    CreateFile(mock_fs.get(), kv.first, kv.second);
   }
 
   auto selector0 = arrow::fs::FileSelector{};
   selector0.base_dir = "0";
   selector0.recursive = true;
 
-  ASSERT_OK(CopyFiles(root_mock_fs, selector0, shared_ptr_fs, "0"));
-  for (int i = 0; i <= kNumberFiles; ++i) {
-    AssertFileContents(fs, "0/" + std::to_string(i), "data" + std::to_string(i));
+  ASSERT_OK(CopyFiles(mock_fs, selector0, shared_ptr_fs, "0"));
+  AssertAllDirs(fs, dirs0);
+  for (const auto& kv : files0) {
+    AssertFileContents(fs, kv.first, kv.second);
   }
 
   ASSERT_OK(CopyFiles(shared_ptr_fs, selector0, shared_ptr_fs, "1"));
-  for (int i = 0; i <= kNumberFiles; ++i) {
-    AssertFileContents(fs, "1/" + std::to_string(i), "data" + std::to_string(i));
+  AssertAllDirs(fs, dirs0and1);
+  for (const auto& kv : files0and1) {
+    AssertFileContents(fs, kv.first, kv.second);
   }
 
   auto selector1 = arrow::fs::FileSelector{};
   selector1.base_dir = "1";
   selector1.recursive = true;
-  ASSERT_OK(CopyFiles(shared_ptr_fs, selector1, root_mock_fs, "1"));
-  for (int i = 0; i <= kNumberFiles; ++i) {
-    AssertFileContents(root_mock_fs.get(), "1/" + std::to_string(i),
-                       "data" + std::to_string(i));
+
+  ASSERT_OK(CopyFiles(shared_ptr_fs, selector1, mock_fs, "1"));
+  AssertAllDirs(mock_fs.get(), dirs0and1);
+  for (const auto& kv : files0and1) {
+    AssertFileContents(mock_fs.get(), kv.first, kv.second);
   }
 }
 
@@ -1252,7 +1270,7 @@ GENERIC_FS_TEST_DEFINE(TestDeleteFiles)
 GENERIC_FS_TEST_DEFINE(TestMoveFile)
 GENERIC_FS_TEST_DEFINE(TestMoveDir)
 GENERIC_FS_TEST_DEFINE(TestCopyFile)
-GENERIC_FS_TEST_DEFINE(TestCopyFilesBetweenFilesystems)
+GENERIC_FS_TEST_DEFINE(TestCopyFiles)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfo)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfoVector)
 GENERIC_FS_TEST_DEFINE(TestGetFileInfoSelector)
