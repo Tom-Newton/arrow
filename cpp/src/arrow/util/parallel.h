@@ -49,13 +49,12 @@ Status ParallelFor(int num_tasks, FUNCTION&& func,
 template <class FUNCTION, typename T,
           typename R = typename internal::call_traits::return_type<FUNCTION>::ValueType>
 Future<std::vector<R>> ParallelForAsync(
-    std::vector<T> inputs, FUNCTION&& func,
+    std::vector<T> inputs, FUNCTION&& func, TaskHints hints,
     Executor* executor = internal::GetCpuThreadPool()) {
   std::vector<Future<R>> futures(inputs.size());
-  TaskHints hints;
-  hints.priority = 10;
   for (size_t i = 0; i < inputs.size(); ++i) {
-    ARROW_ASSIGN_OR_RAISE(futures[i], executor->Submit(hints, func, i, std::move(inputs[i])));
+    ARROW_ASSIGN_OR_RAISE(futures[i],
+                          executor->Submit(hints, func, i, std::move(inputs[i])));
   }
   return All(std::move(futures))
       .Then([](const std::vector<Result<R>>& results) -> Result<std::vector<R>> {
@@ -88,9 +87,9 @@ template <class FUNCTION, typename T,
           typename R = typename internal::call_traits::return_type<FUNCTION>::ValueType>
 Future<std::vector<R>> OptionalParallelForAsync(
     bool use_threads, std::vector<T> inputs, FUNCTION&& func,
-    Executor* executor = internal::GetCpuThreadPool()) {
+    TaskHints hints = TaskHints{}, Executor* executor = internal::GetCpuThreadPool()) {
   if (use_threads) {
-    return ParallelForAsync(std::move(inputs), std::forward<FUNCTION>(func), executor);
+    return ParallelForAsync(std::move(inputs), std::forward<FUNCTION>(func), hints, executor);
   } else {
     std::vector<R> result(inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {

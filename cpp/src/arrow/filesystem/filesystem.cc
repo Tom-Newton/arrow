@@ -55,7 +55,6 @@
 #include "arrow/util/vector.h"
 #include "arrow/util/visibility.h"
 #include "arrow/util/windows_fixup.h"
-#include <iostream>
 
 namespace arrow::fs {
 
@@ -633,7 +632,6 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
 
   auto copy_one_file = [&](int i,
                            const FileLocator& source_file_locator) -> Result<Future<>> {
-    std::cout << "COPYING file " << i << std::endl;
     if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
       return sources[i].filesystem->CopyFile(sources[i].path, destinations[i].path);
     }
@@ -653,9 +651,18 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
     return destination->CloseAsync();
   };
 
+  // Spawn copy_one_file less urgently than default, so that background_writes are done
+  // with higher priority. Otherwise copy_one_file will keep buffering more data in memory
+  // and there will be no IO threads left to do the background_writes. Large copies
+  // where the background_writes are delayed too much, will cause OOMs.
+  TaskHints hints{10};
   auto future = ::arrow::internal::OptionalParallelForAsync(
-      use_threads, sources, std::move(copy_one_file), io_context.executor());
+      use_threads, sources, std::move(copy_one_file), hints, io_context.executor());
+
+  // Wait for all the copy_one_file instances to complete.
   ARROW_ASSIGN_OR_RAISE(auto copy_close_async_future, future.result());
+
+  // Wait for all the futures returned by copy_one_file to complete.
   for (const auto& result : copy_close_async_future) {
     result.Wait();
   }

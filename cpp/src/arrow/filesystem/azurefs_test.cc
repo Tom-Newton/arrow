@@ -46,8 +46,6 @@
 #include "arrow/util/unreachable.h"
 #include "arrow/util/value_parsing.h"
 
-#include "arrow/filesystem/localfs.h"
-
 namespace arrow {
 using internal::TemporaryDir;
 namespace fs {

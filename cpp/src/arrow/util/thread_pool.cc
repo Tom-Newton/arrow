@@ -55,6 +55,9 @@ struct Task {
 struct QueuedTask {
   Task task;
   TaskHints hints;
+
+  // Implement comparison so that std::priority_queue will pop the low priorities more
+  // urgently.
   bool operator<(const QueuedTask& other) const {
     return hints.priority > other.hints.priority;
   }
