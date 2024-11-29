@@ -37,8 +37,6 @@
 #include "arrow/util/key_value_metadata.h"
 #include "arrow/util/vector.h"
 
-#include "arrow/filesystem/localfs.h"
-
 using ::testing::ElementsAre;
 
 namespace arrow {

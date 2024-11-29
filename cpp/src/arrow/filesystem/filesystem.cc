@@ -633,8 +633,8 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
   auto copy_one_file = [&](int i,
                            const FileLocator& source_file_locator) -> Result<Future<>> {
     if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
-      RETURN_NOT_OK(
-          source_file_locator.filesystem->CopyFile(source_file_locator.path, destinations[i].path));
+      RETURN_NOT_OK(source_file_locator.filesystem->CopyFile(source_file_locator.path,
+                                                             destinations[i].path));
       return Future<>::MakeFinished();
     }
 
@@ -645,11 +645,11 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
     ARROW_ASSIGN_OR_RAISE(auto destination, destinations[i].filesystem->OpenOutputStream(
                                                 destinations[i].path, metadata));
     RETURN_NOT_OK(internal::CopyStream(source, destination, chunk_size, io_context));
-    // Using the blocking Close() here can cause deadlocks because FileSystem
-    // implementations that implement background_writes need to wait for another IO
-    // thread. There is a risk that the whole IO thread pool is full of "wasted" threads
-    // trying to call Close(), leaving no IO threads left to actually fulfill the
-    // background writes.
+    // Using the blocking Close() here can cause reduced performance and deadlocks because
+    // FileSystem implementations that implement background_writes need to queue and wait
+    // for other IO thread(s). There is a risk that most or all the threads in the IO
+    // thread pool are blocking on a call Close(), leaving no IO threads left to actually
+    // fulfil the background writes.
     return destination->CloseAsync();
   };
 
@@ -664,7 +664,8 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
   // Wait for all the copy_one_file instances to complete.
   ARROW_ASSIGN_OR_RAISE(auto copy_close_async_future, future.result());
 
-  // Wait for all the futures returned by copy_one_file to complete.
+  // Wait for all the futures returned by copy_one_file to complete. When the destination
+  // filesystem uses background_writes this is when most of the upload happens. 
   for (const auto& result : copy_close_async_future) {
     result.Wait();
   }
