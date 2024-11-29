@@ -581,39 +581,36 @@ void GenericFileSystemTest::TestCopyFile(FileSystem* fs) {
 }
 
 void GenericFileSystemTest::TestCopyFilesBetweenFilesystems(FileSystem* fs) {
-  // TODO: Ultimately this should test using the in memory fs as the other filesystem.
-  ASSERT_OK(arrow::io::SetIOThreadPoolCapacity(10));
-  auto root_local_fs = std::make_shared<arrow::fs::LocalFileSystem>();
-  auto local_fs = std::make_shared<arrow::fs::SubTreeFileSystem>("/tmp/arrow_testing/0",
-                                                                 root_local_fs);
+  auto root_mock_fs = std::make_shared<arrow::fs::internal::MockFileSystem>(
+      std::chrono::system_clock::now());
+  std::shared_ptr<FileSystem> shared_ptr_fs(fs, [](FileSystem*) {});
 
-  ASSERT_OK(local_fs->CreateDir("AB/CD"));
-  ASSERT_OK(local_fs->CreateDir("EF"));
+  auto mock_fs0 = std::make_shared<arrow::fs::SubTreeFileSystem>("/0", root_mock_fs);
+  auto fs0 = std::make_shared<arrow::fs::SubTreeFileSystem>("/0", shared_ptr_fs);
+  auto mock_fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/1", root_mock_fs);
+  auto fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/1", shared_ptr_fs);
+
+  ASSERT_OK(mock_fs0->CreateDir("AB/CD"));
+  ASSERT_OK(mock_fs0->CreateDir("EF"));
   std::vector<std::string> all_dirs{"AB", "AB/CD", "EF"};
   for (const auto& dir : all_dirs) {
-    for (int i = 0; i <= 1000; ++i) {
-      CreateFile(local_fs.get(), dir + "/" + std::to_string(i), std::string(100, 'a'));
+    for (int i = 0; i <= 100; ++i) {
+      CreateFile(mock_fs0.get(), dir + "/" + std::to_string(i), std::string(100, 'a'));
     }
   }
 
-  auto local_selector = arrow::fs::FileSelector{};
-  local_selector.base_dir = "";
-  local_selector.recursive = true;
-
-  std::shared_ptr<FileSystem> shared_ptr_fs(fs, [](FileSystem*) {});
-  ASSERT_OK(CopyFiles(local_fs, local_selector, shared_ptr_fs, "container"));
-
   auto selector = arrow::fs::FileSelector{};
-  selector.base_dir = "container";
   selector.recursive = true;
 
-  auto local_fs1 = std::make_shared<arrow::fs::SubTreeFileSystem>("/tmp/arrow_testing/1",
-                                                                  root_local_fs);
+  ASSERT_OK(CopyFiles(mock_fs0, selector, fs0, ""));
+  ASSERT_OK(CopyFiles(fs0, selector, fs1, ""));
 
-  ASSERT_OK(CopyFiles(shared_ptr_fs, selector, local_fs, ""));
+  
+
+  ASSERT_OK(CopyFiles(shared_ptr_fs, selector, mock_fs1, ""));
 
   AssertAllDirs(fs, all_dirs);
-  // AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
+  AssertAllFiles(fs, {"AB/abc", "EF/ghi", "def"});
 
   // // Overwrite contents for one file => other data shouldn't change
   // CreateFile(fs, "def", "other data");
