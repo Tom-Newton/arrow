@@ -609,11 +609,14 @@ TEST_F(TestThreadPool, TasksRunInSpawnOrder) {
 }
 
 TEST_F(TestThreadPool, TasksRunInPriorityOrder) {
-  auto pool = this->MakeThreadPool(0);  // Start with no threads so we can spawn all the
-                                        // test tasks before they start running.
+  auto pool = this->MakeThreadPool(1);
   auto recorded_times = std::vector<std::chrono::system_clock::time_point>(10);
-  // auto record_time = []() {
-  // };
+  auto sleep_task = []() { SleepABit(); };
+
+  // Spawn a sleep task to block the pool while we add the other tasks. This
+  // ensures all the tasks are queued before any of them start running, so that
+  // their running order is fully determined by their priority.
+  ASSERT_OK(pool->Spawn(sleep_task));
 
   for (int i = 0; i < 10; ++i) {
     auto record_time = [&recorded_times, i]() {
@@ -622,22 +625,10 @@ TEST_F(TestThreadPool, TasksRunInPriorityOrder) {
     // Spawn tasks in opposite order to urgency.
     ASSERT_OK(pool->Spawn(TaskHints{10 - i}, record_time));
   }
-  ASSERT_OK(pool->SetCapacity(1));
 
   ASSERT_OK(pool->Shutdown());
 
   for (size_t i = 1; i < recorded_times.size(); ++i) {
-    auto duration_i = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                          recorded_times[i].time_since_epoch())
-                          .count();
-    auto duration_i_minus_1 = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                  recorded_times[i - 1].time_since_epoch())
-                                  .count();
-    // auto t_i = std::chrono::system_clock::to_time_t(recorded_times[i]);
-    // auto t_i_minus_1 = std::chrono::system_clock::to_time_t(recorded_times[i - 1]);
-    std::cout << duration_i << std::endl;
-    std::cout << duration_i_minus_1 << std::endl;
-
     ASSERT_GE(recorded_times[i - 1], recorded_times[i]);
   }
 }
