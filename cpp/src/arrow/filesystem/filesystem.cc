@@ -665,7 +665,7 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
   ARROW_ASSIGN_OR_RAISE(auto copy_close_async_future, future.result());
 
   // Wait for all the futures returned by copy_one_file to complete. When the destination
-  // filesystem uses background_writes this is when most of the upload happens. 
+  // filesystem uses background_writes this is when most of the upload happens.
   for (const auto& result : copy_close_async_future) {
     result.Wait();
   }

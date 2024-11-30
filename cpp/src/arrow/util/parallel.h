@@ -89,7 +89,8 @@ Future<std::vector<R>> OptionalParallelForAsync(
     bool use_threads, std::vector<T> inputs, FUNCTION&& func,
     Executor* executor = internal::GetCpuThreadPool(), TaskHints hints = TaskHints{}) {
   if (use_threads) {
-    return ParallelForAsync(std::move(inputs), std::forward<FUNCTION>(func), executor, hints);
+    return ParallelForAsync(std::move(inputs), std::forward<FUNCTION>(func), executor,
+                            hints);
   } else {
     std::vector<R> result(inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {
