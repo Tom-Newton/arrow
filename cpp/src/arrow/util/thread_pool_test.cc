@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -576,6 +577,69 @@ TEST_F(TestThreadPool, ConstructDestruct) {
 TEST_F(TestThreadPool, Spawn) {
   auto pool = this->MakeThreadPool(3);
   SpawnAdds(pool.get(), 7, task_add<int>);
+}
+
+TEST_F(TestThreadPool, TasksRunInSpawnOrder) {
+  auto pool = this->MakeThreadPool(1);
+  auto recorded_times = std::vector<std::chrono::system_clock::time_point>(10);
+
+  for (int i = 0; i < 10; ++i) {
+    auto record_time = [&recorded_times, i]() {
+      recorded_times[i] = std::chrono::system_clock::now();
+    };
+    ASSERT_OK(pool->Spawn(record_time));
+  }
+
+  ASSERT_OK(pool->Shutdown());
+
+  for (size_t i = 1; i < recorded_times.size(); ++i) {
+    auto duration_i = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          recorded_times[i].time_since_epoch())
+                          .count();
+    auto duration_i_minus_1 = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                  recorded_times[i - 1].time_since_epoch())
+                                  .count();
+    // auto t_i = std::chrono::system_clock::to_time_t(recorded_times[i]);
+    // auto t_i_minus_1 = std::chrono::system_clock::to_time_t(recorded_times[i - 1]);
+    std::cout << duration_i << std::endl;
+    std::cout << duration_i_minus_1 << std::endl;
+
+    ASSERT_LE(recorded_times[i - 1], recorded_times[i]);
+  }
+}
+
+TEST_F(TestThreadPool, TasksRunInPriorityOrder) {
+  auto pool = this->MakeThreadPool(0);  // Start with no threads so we can spawn all the
+                                        // test tasks before they start running.
+  auto recorded_times = std::vector<std::chrono::system_clock::time_point>(10);
+  // auto record_time = []() {
+  // };
+
+  for (int i = 0; i < 10; ++i) {
+    auto record_time = [&recorded_times, i]() {
+      recorded_times[i] = std::chrono::system_clock::now();
+    };
+    // Spawn tasks in opposite order to urgency.
+    ASSERT_OK(pool->Spawn(TaskHints{10 - i}, record_time));
+  }
+  ASSERT_OK(pool->SetCapacity(1));
+
+  ASSERT_OK(pool->Shutdown());
+
+  for (size_t i = 1; i < recorded_times.size(); ++i) {
+    auto duration_i = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          recorded_times[i].time_since_epoch())
+                          .count();
+    auto duration_i_minus_1 = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                  recorded_times[i - 1].time_since_epoch())
+                                  .count();
+    // auto t_i = std::chrono::system_clock::to_time_t(recorded_times[i]);
+    // auto t_i_minus_1 = std::chrono::system_clock::to_time_t(recorded_times[i - 1]);
+    std::cout << duration_i << std::endl;
+    std::cout << duration_i_minus_1 << std::endl;
+
+    ASSERT_GE(recorded_times[i - 1], recorded_times[i]);
+  }
 }
 
 TEST_F(TestThreadPool, StressSpawn) {
