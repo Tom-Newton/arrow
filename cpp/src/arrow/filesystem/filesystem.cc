@@ -630,7 +630,7 @@ Status CopyFiles(const std::vector<FileLocator>& sources,
                            destinations.size(), " paths.");
   }
 
-  auto copy_one_file = [&](int i,
+  auto copy_one_file = [&](size_t i,
                            const FileLocator& source_file_locator) -> Result<Future<>> {
     if (source_file_locator.filesystem->Equals(destinations[i].filesystem)) {
       RETURN_NOT_OK(source_file_locator.filesystem->CopyFile(source_file_locator.path,

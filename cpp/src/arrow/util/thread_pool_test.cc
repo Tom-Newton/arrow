@@ -24,7 +24,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
